@@ -47,6 +47,28 @@ static bool getFileContent(std::string fileName, std::list<std::string> & vecOfS
 	return true;
 }
 
+static void createIntervals(std::list<std::string> & vecOfStrs, int sec, float powerLow, float powerHigh, int cadence) {
+
+//	int nb_inter = sec / 10;
+//	int dftp = (ftp2 - ftp1) / nb_inter;
+//	int ftp = ftp1 + dftp / 2;
+//	do {
+//
+//		snprintf(buff, sizeof(buff), "         <SteadyState Duration=\"%d\" Power=\"%d.%02d\" Cadence=\"%d\"/>",
+//				10,
+//				(int)(ftp / 100), ftp % 100,
+//				cad);
+//
+//		ftp += dftp;
+//
+//		std::string line = buff;
+//
+//		_series.push_back(line);
+//
+//	} while (--nb_inter);
+
+}
+
 static void replaceRamps(std::list<std::string> & vecOfStrs) {
 
 	// <Ramp Duration="300" PowerLow="0.25" PowerHigh="0.65"/>
@@ -58,10 +80,38 @@ static void replaceRamps(std::list<std::string> & vecOfStrs) {
 
 		if (line.find("Ramp") != std::string::npos) {
 
+			// remove leading garbage
+			while (line.at(0) != '<') {
+
+				line = line.substr(1);
+			}
+
 			std::cout << "Short ramp found : " << line << std::endl;
+
+			int duration, cadence=0;
+			float powerLow, powerHigh;
+
+			if (line.find("Cadence") != std::string::npos) {
+
+				// <Ramp Duration=\"%d\" PowerLow=\"%d.%02d\" PowerHigh=\"%d.%02d\" Cadence=\"%d\"/>"
+
+				int res = sscanf(line.c_str(), "<Ramp Duration=\"%d\" PowerLow=\"%f\" PowerHigh=\"%f\" Cadence=\"%d\"/>", &duration, &powerLow, &powerHigh, &cadence);
+				assert(res == 4);
+
+			} else {
+
+				// <Ramp Duration=\"%d\" PowerLow=\"%d.%02d\" PowerHigh=\"%d.%02d\"/>"
+				int res = sscanf(line.c_str(), "<Ramp Duration=\"%d\" PowerLow=\"%f\" PowerHigh=\"%f\"/>", &duration, &powerLow, &powerHigh);
+				assert(res == 3);
+			}
+
+			createIntervals(outList, duration, powerLow, powerHigh, cadence);
+
+		} else {
+
+			outList.push_back(line);
 		}
 
-		outList.push_back(line);
 	}
 
 	vecOfStrs.clear();
