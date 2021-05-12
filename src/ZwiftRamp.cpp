@@ -49,23 +49,34 @@ static bool getFileContent(std::string fileName, std::list<std::string> & vecOfS
 
 static void createIntervals(std::list<std::string> & vecOfStrs, int sec, float powerLow, float powerHigh, int cadence) {
 
-//	int nb_inter = sec / 10;
-//	int dftp = (ftp2 - ftp1) / nb_inter;
-//	int ftp = ftp1 + dftp / 2;
-//	do {
-//
-//		snprintf(buff, sizeof(buff), "         <SteadyState Duration=\"%d\" Power=\"%d.%02d\" Cadence=\"%d\"/>",
-//				10,
-//				(int)(ftp / 100), ftp % 100,
-//				cad);
-//
-//		ftp += dftp;
-//
-//		std::string line = buff;
-//
-//		_series.push_back(line);
-//
-//	} while (--nb_inter);
+	int nb_inter = sec / 10;
+	int dftp = (powerHigh - powerLow) / nb_inter;
+	int ftp = powerLow + dftp / 2;
+
+	char buff[512];
+
+	do {
+
+		if (cadence) {
+
+			snprintf(buff, sizeof(buff), "\t\t<SteadyState Duration=\"%d\" Power=\"%d.%02d\" Cadence=\"%d\"/>",
+					10,
+					(int)(ftp / 100), ftp % 100,
+					cadence);
+		} else {
+
+			snprintf(buff, sizeof(buff), "\t\t<SteadyState Duration=\"%d\" Power=\"%d.%02d\"/>",
+					10,
+					(int)(ftp / 100), ftp % 100);
+		}
+
+		ftp += dftp;
+
+		std::string line = buff;
+
+		vecOfStrs.push_back(line);
+
+	} while (--nb_inter);
 
 }
 
@@ -76,7 +87,9 @@ static void replaceRamps(std::list<std::string> & vecOfStrs) {
 
 	std::list<std::string> outList;
 
-	for (auto line : vecOfStrs) {
+	for (auto _line : vecOfStrs) {
+
+		std::string line = _line;
 
 		if (line.find("Ramp") != std::string::npos) {
 
@@ -105,11 +118,19 @@ static void replaceRamps(std::list<std::string> & vecOfStrs) {
 				assert(res == 3);
 			}
 
+			// ramp is too long
+			if (duration > 60) {
+
+				outList.push_back(_line);
+				continue;
+			}
+
+			// ramp is short
 			createIntervals(outList, duration, powerLow, powerHigh, cadence);
 
 		} else {
 
-			outList.push_back(line);
+			outList.push_back(_line);
 		}
 
 	}
@@ -118,6 +139,37 @@ static void replaceRamps(std::list<std::string> & vecOfStrs) {
 
 	vecOfStrs = outList;
 
+}
+
+void save(std::string wname, std::list<std::string> & _series) {
+
+	std::ofstream fCalibrations;
+
+	// remove surplus
+	while (wname.find("\\") != std::string::npos ||
+			wname.find("/") != std::string::npos) {
+
+		wname = wname.substr(1);
+	}
+	while (wname.find(".") != std::string::npos) {
+
+		wname.pop_back();
+	}
+
+	std::string new_name = "out/";
+	new_name += wname;
+	new_name += ".zwo";
+
+	std::cout << "Saving to file : " << new_name << std::endl;
+
+	fCalibrations.open(new_name);
+
+	for (auto line : _series) {
+
+		fCalibrations << line << std::endl;
+	}
+
+	fCalibrations.close();
 }
 
 int main(int argc, char *argv[]) {
@@ -136,6 +188,9 @@ int main(int argc, char *argv[]) {
 		if (getFileContent(fname, vecOfStr)) {
 
 			replaceRamps(vecOfStr);
+
+			std::string name = fname;
+			save(name, vecOfStr);
 
 		} else {
 
