@@ -50,8 +50,8 @@ static bool getFileContent(std::string fileName, std::list<std::string> & vecOfS
 static void createIntervals(std::list<std::string> & vecOfStrs, int sec, float powerLow, float powerHigh, int cadence) {
 
 	int nb_inter = sec / 10;
-	int dftp = (powerHigh - powerLow) / nb_inter;
-	int ftp = powerLow + dftp / 2;
+	int dftp = (100 * (powerHigh - powerLow)) / nb_inter;
+	int ftp = 100 * powerLow + dftp / 2;
 
 	char buff[512];
 
